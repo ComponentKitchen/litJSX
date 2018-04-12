@@ -4,7 +4,8 @@ This considers the possibility of using HTML tagged template literals to process
 
 This feels like using JSX in React/Preact, but without a compile step. Parsing of JSX is done at runtime, but is only performed once per tagged template literal, and parsing is quite efficient, so runtime performance should be acceptable.
 
-["Hello, world" demo](https://rawgit.com/ComponentKitchen/litJSX/master/index.html)
+["Hello, world" demo](https://cdn.rawgit.com/ComponentKitchen/litJSX/26a7c0aa/index.html) (discussed below in "Binding to components")
+
 [Page template demo](https://rawgit.com/ComponentKitchen/litJSX/master/demo/index.html)
 
 
@@ -83,7 +84,7 @@ function Greet(props) {
   `;
 }
 
-Greet({ name: 'world' })        //<span>Hello, <b>world</b>.</span>
+html`<Greet name="world"/>`       //<span>Hello, <b>world</b>.</span>
 ```
 
 This allows each JavaScript module to work strictly with the functions it has imported, without fear of name collisions.
