@@ -84,7 +84,7 @@ function Greet(props) {
   `;
 }
 
-html`<Greet name="world"/>`       //<span>Hello, <b>world</b>.</span>
+html`<Greet name="world"/>`     // <span>Hello, <b>world</b>.</span>
 ```
 
 This allows each JavaScript module to work strictly with the functions it has imported, without fear of name collisions.
