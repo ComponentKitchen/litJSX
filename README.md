@@ -4,6 +4,9 @@ This considers the possibility of using HTML tagged template literals to process
 
 This feels like using JSX in React/Preact, but without a compile step. Parsing of JSX is done at runtime, but is only performed once per tagged template literal, and parsing is quite efficient, so runtime performance should be acceptable.
 
+["Hello, world" demo](https://rawgit.com/ComponentKitchen/litJSX/master/index.html)
+[Page template demo](https://rawgit.com/ComponentKitchen/litJSX/master/demo/index.html)
+
 
 ## litJSX template literal flavors
 
@@ -15,7 +18,7 @@ litJSX includes two template literals:
 Example:
 
 ```js
-import { jsxToText } from './src/litJSX.js';
+import { jsxToText } from 'litJSX.js';
 
 const name = 'world';
 jsxToText`<span>Hello, ${world}.</span>` // "<span>Hello, world.</span>"
@@ -27,7 +30,7 @@ jsxToText`<span>Hello, ${world}.</span>` // "<span>Hello, world.</span>"
 Components are stateless functional components that take a `props` object as their sole parameter and return either a DOM element or a string:
 
 ```js
-import { jsxToDOM } from '../src/litJSX.js';
+import { jsxToDOM } from 'litJSX.js';
 
 export default function Header(props) {
   return jsxToDOM`
@@ -45,7 +48,7 @@ Header({ children: title })      // <h1>Hello</h1>
 Various editor extensions exist to apply HTML syntax highlighting to tagged template literals. Some of these require that the name of the template literal be `html`. By importing the desired flavor of litJSX (`jsxToDom` or `jsxToText`) as `html`, you can convince your editor extension to apply syntax highlighting to these litJSX template strings.
 
 ```js
-import { jsxToDOM as html } from '../src/litJSX.js';
+import { jsxToDOM as html } from 'litJSX.js';
 
 export default function Header(props) {
   return html`
@@ -64,18 +67,23 @@ By default, the litJSX template parser looks in the global (window) scope for fu
 For control over which components are included in the parser's scope, you can use bindable litJSX parsers called `jsxToDOMWith` and `jsxToTextWith`. These both accept a map of function names to functions, and return a parser that will use that map in resolving component names to functions.
 
 ```js
-import { jsxToDOMWith } from '../src/litJSX.js';
-import Header from './Header.js';
-const html = jsxToDOMWith({ Header });
+import { jsxToDOMWith } from 'litJSX.js';
+const html = jsxToDOMWith({ Bold, Greet });
 
-export default function PageTemplate(props) {
+function Bold(props) {
+  return html`<b>${props.children}</b>`;
+}
+
+function Greet(props) {
   return html`
-    <main>
-      <Header>${props.title}</Header>
-      ${props.children}
-    </main>
+    <span>
+      Hello,
+      <Bold>${props.name}</Bold>.
+    </span>
   `;
 }
+
+Greet({ name: 'world' })        //<span>Hello, <b>world</b>.</span>
 ```
 
 This allows each JavaScript module to work strictly with the functions it has imported, without fear of name collisions.
