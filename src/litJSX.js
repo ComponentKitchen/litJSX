@@ -5,6 +5,23 @@ const domParser = new DOMParser();
 const defaultCache = new WeakMap();
 
 
+// Return the given string with any leading or trailing whitespace condensed to
+// a single space. This generally ensures the same whitespace handling in HTML,
+// while avoiding long blocks of white space before or after strings.
+function collapseWhitespace(string) {
+  const trimRegex = /^(\s*)([\S](?:.*[\S])*)(\s*)$/;
+  const match = trimRegex.exec(string);
+  if (match) {
+    const [, leadingWhitespace, text, trailingWhitespace] = match;
+    const leadingSpace = leadingWhitespace.length > 0 ? ' ' : '';
+    const trailingSpace = trailingWhitespace.length > 0 ? ' ' : '';
+    return `${leadingSpace}${text}${trailingSpace}`;
+  } else {
+    return string;
+  }
+}
+
+
 // Check a node returned from DOMParser to see if it contains an error (the
 // parser doesn't throw exceptions). If such a node is found, return the text of
 // the error, otherwise null.
@@ -264,10 +281,11 @@ function transformNodes(nodes, classMap) {
 
 function transformString(string) {
   const markerRegex = /\[\[\[(\d+)\]\]\]/;
-  const parts = string.split(markerRegex);
+  const trimmed = collapseWhitespace(string);
+  const parts = trimmed.split(markerRegex);
   if (parts.length === 1) {
     // No markers.
-    return string;
+    return trimmed;
   }
   // There are markers. There should be an odd number of parts. Parts with an
   // even index are strings, with an odd index are markers. We translate the
