@@ -5,19 +5,30 @@ const domParser = new DOMParser();
 const defaultCache = new WeakMap();
 
 
+// If any of the given items are promises, wait for them all to resolve before
+// returning the results. If none are promises, return the items as is.
+function awaitAny(items) {
+  const anyPromises = items.find(item => item instanceof Promise);
+  return anyPromises ?
+    Promise.all(items) :
+    items;
+}
+
+
 // Return the given string with any leading or trailing whitespace condensed to
 // a single space. This generally ensures the same whitespace handling in HTML,
 // while avoiding long blocks of white space before or after strings.
+// Example: '   Hello, world   ' => ' Hello, world '
 function collapseWhitespace(string) {
-  const trimRegex = /^(\s*)([\S](?:.*[\S])*)(\s*)$/;
-  const match = trimRegex.exec(string);
-  if (match) {
-    const [, leadingWhitespace, text, trailingWhitespace] = match;
-    const leadingSpace = leadingWhitespace.length > 0 ? ' ' : '';
-    const trailingSpace = trailingWhitespace.length > 0 ? ' ' : '';
-    return `${leadingSpace}${text}${trailingSpace}`;
+  const hasLeadingSpace = /^\s/.test(string);
+  const hasTrailingSpace = /\s$/.test(string);
+  const trimmed = string.trim();
+  if (trimmed.length === 0) {
+    return ' '; // Whole string was whitespace
   } else {
-    return string;
+    const newLeadingSpace = hasLeadingSpace ? ' ' : '';
+    const newTrailingSpace = hasTrailingSpace ? ' ' : '';
+    return `${newLeadingSpace}${trimmed}${newTrailingSpace}`;
   }
 }
 
@@ -26,11 +37,16 @@ function collapseWhitespace(string) {
 // parser doesn't throw exceptions). If such a node is found, return the text of
 // the error, otherwise null.
 function findDOMParserError(node) {
-  const errorNode = node.childNodes[0] &&
-      node.childNodes[0].childNodes[0];
-  return errorNode && error.nodeName === 'parsererror' ?
-    errorNode.textContent :
-    null;
+  const isErrorNode = node => node && node.nodeName === 'parsererror';
+  // Error node might be first child or first grandchild.
+  const child = node.childNodes[0];
+  const grandchild = child && child.childNodes[0];
+  const errorNode = isErrorNode(child) ?
+    child :
+    isErrorNode(grandchild) ?
+      grandChild :
+      null;
+  return errorNode ? errorNode.textContent : null;
 }
 
 
@@ -59,7 +75,7 @@ export function jsxToDOMWith(classMap = {}) {
  */
 export function jsxToText(strings, ...values) {
   const data = parseAndCache(strings, {}, defaultCache);
-  return renderToString(data, values);
+  return renderToText(data, values);
 }
 
 
@@ -67,7 +83,7 @@ export function jsxToTextWith(classMap = {}) {
   const cache = new WeakMap();
   return (strings, ...values) => {
     const data = parseAndCache(strings, classMap, cache);
-    return renderToString(data, values);
+    return renderToText(data, values);
   };
 }
 
@@ -132,28 +148,50 @@ function render(data, substitutions, renderers) {
   // A component or element.
   const [nameData, attributesData, childrenData] = data;
   const isComponent = typeof nameData === 'function';
-  const children = renderers.children(childrenData, substitutions);
   const resolvedAttributes = resolveAttributes(attributesData, substitutions);
-  return isComponent ?
-    renderComponent(nameData, resolvedAttributes, children) :
-    renderers.element(nameData, resolvedAttributes, children);
+  const topRenderer = isComponent ? renderComponent : renderers.element;
+  
+  // Children may a promise for children, or the actual children.
+  const awaitedChildren = renderChildren(childrenData, substitutions, renderers);
+  if (awaitedChildren instanceof Promise) {
+    // Wait for children before constructing result.
+    return awaitedChildren.then(children => 
+      topRenderer(nameData, resolvedAttributes, children)
+    );
+  } else {
+    // Children were synchronous, can construct result right away.
+    return topRenderer(nameData, resolvedAttributes, awaitedChildren);
+  }
 }
 
 
-function renderChildrenToDOM(childrenData, substitutions) {
+// Render an array of rendered children, which may synchronous or asynchronous.
+function renderChildren(childrenData, substitutions, renderers) {
+  const partialResults = childrenData.map(child =>
+      render(child, substitutions, renderers));
+  const awaitedChildren = awaitAny(partialResults);
+  if (awaitedChildren instanceof Promise) {
+    // At least one of the results was a promise; wait for them all to complete
+    // before processing the final set.
+    return awaitedChildren.then(children =>
+      renderers.children(children, substitutions)
+    );
+  } else {
+    // All children were synchronous, so process final set right away.
+    return renderers.children(awaitedChildren);
+  }
+}
+
+
+function renderChildrenToDOM(children, substitutions) {
   const fragment = document.createDocumentFragment();
-  childrenData.forEach(childData => {
-    const child = renderToDOM(childData, substitutions);
-    fragment.appendChild(child);
-  });
+  children.forEach(child => fragment.appendChild(child));
   return fragment;
 }
 
 
-function renderChildrenToString(childrenData, substitutions) {
-  return childrenData.map(child =>
-    renderToString(child, substitutions)
-  ).join('');  
+function renderChildrenToText(children) {
+  return children.join('');  
 }
 
 
@@ -177,7 +215,7 @@ function renderElementToDOM(tag, attributes, children) {
 }
 
 
-function renderElementToString(tag, attributes, children) {
+function renderElementToText(tag, attributes, children) {
   const attributeText = Object.keys(attributes).map(name => {
     return ` ${name}="${attributes[name]}"`;
   }).join('');
@@ -193,7 +231,7 @@ function renderNumberToDOM(number, substitutions) {
 }
 
 
-function renderNumberToString(number, substitutions) {
+function renderNumberToText(number, substitutions) {
   return substitutions[number].toString();
 }
 
@@ -203,6 +241,7 @@ function renderStringToDOM(string) {
 }
 
 
+// Invoke unified render function with renderers for DOM.
 export function renderToDOM(data, substitutions) {
   return render(data, substitutions, {
     children: renderChildrenToDOM,
@@ -213,11 +252,12 @@ export function renderToDOM(data, substitutions) {
 }
 
 
-export function renderToString(data, substitutions) {
+// Invoke unified render function with renderers for text.
+export function renderToText(data, substitutions) {
   return render(data, substitutions, {
-    children: renderChildrenToString,
-    element: renderElementToString,
-    number: renderNumberToString,
+    children: renderChildrenToText,
+    element: renderElementToText,
+    number: renderNumberToText,
     string: String // Strings rendered as is.
   });
 }
@@ -226,7 +266,7 @@ export function renderToString(data, substitutions) {
 function resolveAttributes(attributesData, substitutions) {
   const resolved = {};
   Object.keys(attributesData).forEach(name => {
-    resolved[name] = renderToString(attributesData[name], substitutions);
+    resolved[name] = renderToText(attributesData[name], substitutions);
   });
   return resolved;
 }

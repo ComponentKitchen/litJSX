@@ -6,7 +6,7 @@ import {
   parse,
   parseJSX,
   renderToDOM,
-  renderToString
+  renderToText
 } from '../src/litJSX.js';
 
 
@@ -94,7 +94,7 @@ describe("litJSX", () => {
       `<span>Hello, <BoldText>`,
       `</BoldText>.</span>`
     ]);
-    const result = renderToString(data, ['world']);
+    const result = renderToText(data, ['world']);
     assert.equal(result, '<span>Hello, <b>world</b>.</span>');
   });
 
@@ -162,6 +162,38 @@ describe("litJSX", () => {
     const value = 'foo';
     const dom = html`<div class="${value}"></div>`;
     assert.equal(dom.outerHTML, `<div class="foo"></div>`);
+  });
+
+  it("can render async text compnents", async () => {
+    const Async = props => Promise.resolve(`*${props.children}*`);
+    const text = await jsxToTextWith({ Async })`<Async>test</Async>`;
+    assert.equal(text, `*test*`);
+  });
+
+  it("can render async DOM compnents", async () => {
+    const Async = props => {
+      const span = document.createElement('span');
+      span.appendChild(props.children);
+      return Promise.resolve(span);
+    };
+    const dom = await jsxToDOMWith({ Async })`<Async>test</Async>`;
+    assert.equal(dom.outerHTML, `<span>test</span>`);
+  });
+
+  it("waits for async components in parallel", async () => {
+    const Async = async (props) => {
+      const delay = parseInt(props.delay);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return `[${props.children}]`;
+    };
+    const html = jsxToTextWith({ Async });
+    const text = await html`
+      <span>
+        <Async delay="200">One</Async>
+        <Async delay="100">Two</Async>
+      </span>
+    `;
+    assert.equal(text, `<span> [One] [Two] </span>`);
   });
 
 });

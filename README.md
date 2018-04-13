@@ -88,3 +88,19 @@ html`<Greet name="world"/>`     // <span>Hello, <b>world</b>.</span>
 ```
 
 This allows each JavaScript module to work strictly with the functions it has imported, without fear of name collisions.
+
+
+## Asynchronous components
+
+The litJSX functions support both synchronous and asynchronous components. If any component in the JSX is asynchronous, the entire tagged template literal will return a `Promise` for the complete result. This lets you create `async` components and `await` the final template result.
+
+```js
+const Async = async (props) => {
+  const result = await fetch(props.url);
+  return result;
+};
+
+const html = jsxToTextWith({ Async });
+const text = await html`<Async url="..."/>`;
+// text contains contents of page at the indicated URL
+```
