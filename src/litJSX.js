@@ -1,18 +1,14 @@
+/*
+ * litJSX
+ * 
+ * JSX-like tagged template literals
+ */
+
 // Internally we use the browser's XML parser to parse JSX.
 const domParser = new DOMParser();
 
 // Default cache for processed template strings.
 const defaultCache = new WeakMap();
-
-
-// If any of the given items are promises, wait for them all to resolve before
-// returning the results. If none are promises, return the items as is.
-function awaitAny(items) {
-  const anyPromises = items.find(item => item instanceof Promise);
-  return anyPromises ?
-    Promise.all(items) :
-    items;
-}
 
 
 // Return the given string with any leading or trailing whitespace condensed to
@@ -44,7 +40,7 @@ function findDOMParserError(node) {
   const errorNode = isErrorNode(child) ?
     child :
     isErrorNode(grandchild) ?
-      grandChild :
+      grandchild :
       null;
   return errorNode ? errorNode.textContent : null;
 }
@@ -89,12 +85,25 @@ export function jsxToTextWith(classMap = {}) {
 
 
 /*
- * Main parser entry point for template literals.
+ * Main parser entry point for parsing template literals.
  * 
  * This accepts the set of strings which were passed to a template literal, and
  * returns a data representation that can be combined with an array of
  * substitution values (also from the template literal) to reconstruct either a
  * complete DOM or string representation.
+ * 
+ * The array returned for something like `<div class="foo">Hello</div>`
+ * looks like:
+ * 
+ *     [
+ *       'div',
+ *       { class: 'foo' },
+ *       'Hello'
+ *     ]
+ * 
+ * The 2nd+ array elements are the children, which can be subarrays.
+ * For components, instead of an element name ('div'), the first element in
+ * the array will be the component's function.
  */
 export function parse(strings, classMap = {}) {
   // Concatenate the strings to form JSX (XML). Intersperse text markers that
@@ -123,6 +132,12 @@ function parseAndCache(strings, classMap, cache) {
 }
 
 
+/*
+ * Parse the given text string as JSX.
+ * 
+ * This invokes the standard DOMParser, then transforms the parsed result into
+ * our array representation (see `parse`).
+ */
 export function parseJSX(jsx, classMap) {
   const doc = domParser.parseFromString(jsx, 'text/xml');
 
@@ -138,11 +153,16 @@ export function parseJSX(jsx, classMap) {
 }
 
 
+/*
+ * Given an array representation returned by `parse`, apply the given
+ * substitutions (values from the template literal). Render the result
+ * using the specified set of DOM or text renderers.
+ */
 function render(data, substitutions, renderers) {
   if (typeof data === 'string') {
-    return renderers.string(data);
+    return renderers.value(data);
   } else if (typeof data === 'number') {
-    return renderers.number(data, substitutions);
+    return renderers.value(substitutions[data]);
   }
   
   // A component or element.
@@ -165,20 +185,23 @@ function render(data, substitutions, renderers) {
 }
 
 
-// Render an array of rendered children, which may synchronous or asynchronous.
+/*
+ * Render an array of children, which may include async results.
+ */
 function renderChildren(childrenData, substitutions, renderers) {
-  const partialResults = childrenData.map(child =>
+  const rendered = childrenData.map(child =>
       render(child, substitutions, renderers));
-  const awaitedChildren = awaitAny(partialResults);
-  if (awaitedChildren instanceof Promise) {
-    // At least one of the results was a promise; wait for them all to complete
-    // before processing the final set.
-    return awaitedChildren.then(children =>
+  // See if any of the rendered results are promises.
+  const anyPromises = rendered.find(result => result instanceof Promise);
+  if (anyPromises) {
+    // At least one of the rendered results was a promise; wait for them all to
+    // complete before processing the final set.
+    return Promise.all(rendered).then(children =>
       renderers.children(children, substitutions)
     );
   } else {
     // All children were synchronous, so process final set right away.
-    return renderers.children(awaitedChildren);
+    return renderers.children(rendered);
   }
 }
 
@@ -191,7 +214,7 @@ function renderChildrenToDOM(children, substitutions) {
 
 
 function renderChildrenToText(children) {
-  return children.join('');  
+  return children.join('');
 }
 
 
@@ -223,43 +246,34 @@ function renderElementToText(tag, attributes, children) {
 }
 
 
-function renderNumberToDOM(number, substitutions) {
-  const value = substitutions[number];
-  return value instanceof Node ?
-    value :
-    new Text(value);
-}
-
-
-function renderNumberToText(number, substitutions) {
-  return substitutions[number].toString();
-}
-
-
-function renderStringToDOM(string) {
-  return new Text(string);
-}
-
-
-// Invoke unified render function with renderers for DOM.
+/*
+ * Invoke unified render function with renderers for DOM.
+ */
 export function renderToDOM(data, substitutions) {
   return render(data, substitutions, {
     children: renderChildrenToDOM,
     element: renderElementToDOM,
-    number: renderNumberToDOM,
-    string: renderStringToDOM
+    value: renderValueToDOM
   });
 }
 
 
-// Invoke unified render function with renderers for text.
+/*
+ * Invoke unified render function with renderers for text.
+ */
 export function renderToText(data, substitutions) {
   return render(data, substitutions, {
     children: renderChildrenToText,
     element: renderElementToText,
-    number: renderNumberToText,
-    string: String // Strings rendered as is.
+    value: String   // Render values (including strings) as strings
   });
+}
+
+
+function renderValueToDOM(value) {
+  return value instanceof Node ?
+    value :
+    new Text(value);
 }
 
 
@@ -275,15 +289,18 @@ function resolveAttributes(attributesData, substitutions) {
 function transformAttributes(attributes) {
   const attributeData = {};
   [...attributes].forEach(attribute => {
-    attributeData[attribute.name] = transformString(attribute.value);
+    attributeData[attribute.name] = transformText(attribute.value);
   });
   return attributeData;
 }
 
 
+/*
+ * Transform a Node returned by DOMParser into our array representation.
+ */
 function transformNode(node, classMap = {}) {
   if (node.nodeType === 3 /* Text node */) {
-    return transformString(node.textContent);
+    return transformText(node.textContent);
   }
   // TODO: Handle Comment nodes.
   const localName = node.localName;
@@ -319,9 +336,9 @@ function transformNodes(nodes, classMap) {
 }
 
 
-function transformString(string) {
+function transformText(text) {
   const markerRegex = /\[\[\[(\d+)\]\]\]/;
-  const trimmed = collapseWhitespace(string);
+  const trimmed = collapseWhitespace(text);
   const parts = trimmed.split(markerRegex);
   if (parts.length === 1) {
     // No markers.
