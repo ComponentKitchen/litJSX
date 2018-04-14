@@ -5,7 +5,8 @@
   "main": "src/litJSX.js",
   "devDependencies": {
     "chai": "4.1.2",
-    "mocha": "5.0.5"
+    "mocha": "5.0.5",
+    "xmldom": "0.1.27"
   },
   "scripts": {
     "test": "node --experimental-modules test/tests.node.mjs"

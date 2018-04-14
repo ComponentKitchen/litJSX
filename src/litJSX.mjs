@@ -4,8 +4,12 @@
  * JSX-like tagged template literals
  */
 
-// Internally we use the browser's XML parser to parse JSX.
-const domParser = new DOMParser();
+
+// By default, load the browser's build-in DOMParser.
+let defaultDomParser = typeof window !== 'undefined' ?
+  new window.DOMParser() :
+  null;
+
 
 // Default cache for processed template strings.
 const defaultCache = new WeakMap();
@@ -36,7 +40,7 @@ function findDOMParserError(node) {
   const isErrorNode = node => node && node.nodeName === 'parsererror';
   // Error node might be first child or first grandchild.
   const child = node.childNodes[0];
-  const grandchild = child && child.childNodes[0];
+  const grandchild = child && child.childNodes && child.childNodes[0];
   const errorNode = isErrorNode(child) ?
     child :
     isErrorNode(grandchild) ?
@@ -138,7 +142,13 @@ function parseAndCache(strings, classMap, cache) {
  * This invokes the standard DOMParser, then transforms the parsed result into
  * our array representation (see `parse`).
  */
-export function parseJSX(jsx, classMap) {
+export function parseJSX(jsx, classMap = {}) {
+
+  // HACK(?): Extract DOMParser from class map.
+  const domParser = classMap.DOMParser ?
+    new classMap.DOMParser() :
+    defaultDomParser;
+
   const doc = domParser.parseFromString(jsx, 'text/xml');
 
   // Result of parsing should only have a single node.
@@ -288,7 +298,7 @@ function resolveAttributes(attributesData, substitutions) {
 
 function transformAttributes(attributes) {
   const attributeData = {};
-  [...attributes].forEach(attribute => {
+  Array.from(attributes).forEach(attribute => {
     attributeData[attribute.name] = transformText(attribute.value);
   });
   return attributeData;
@@ -323,7 +333,7 @@ function transformNode(node, classMap = {}) {
 
 function transformNodes(nodes, classMap) {
   let result = [];
-  [...nodes].forEach(node => {
+  Array.from(nodes).forEach(node => {
     const transformed = transformNode(node, classMap);
     if (node.nodeType === 3 /* Text node */) {
       // Splice into result.

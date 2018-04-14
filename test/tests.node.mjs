@@ -1,4 +1,10 @@
-import * as litJSX from '../src/litJSX.mjs';
+import xmldom from 'xmldom';
+import { parseJSX } from '../src/litJSX.mjs';
+
+
+const DOMParser = xmldom.DOMParser;
+const parsed = parseJSX(`<div>Hello</div>`, { DOMParser });
+console.log(parsed);
 
 
 function assert(condition) {
