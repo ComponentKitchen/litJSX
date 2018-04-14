@@ -95,12 +95,13 @@ This allows each JavaScript module to work strictly with the functions it has im
 The litJSX functions support both synchronous and asynchronous components. If any component in the JSX is asynchronous, the entire tagged template literal will return a `Promise` for the complete result. This lets you create `async` components and `await` the final template result.
 
 ```js
-const Async = async (props) => {
-  const result = await fetch(props.url);
-  return result;
+const Page = async (props) => {
+  // Do any necessary async work, like network requests.
+  const contents = await fetch(props.url);
+  return contents;
 };
 
-const html = jsxToTextWith({ Async });
-const text = await html`<Async url="..."/>`;
+const html = jsxToTextWith({ Page });
+const text = await html`<Page url="..."/>`;
 // text contains contents of page at the indicated URL
 ```
