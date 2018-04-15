@@ -50,6 +50,11 @@ function findDOMParserError(node) {
 }
 
 
+/*
+ * Convert the JSX snippets and values into a DOM representation.
+ * 
+ * ["<div>","</div>"], ["Hello"]  ->  <div>Hello</div>
+ */
 export function jsxToDOM(strings, ...values) {
   const data = parseAndCache(strings, {}, defaultCache);
   return renderToDOM(data, values);
@@ -96,8 +101,7 @@ export function jsxToTextWith(classMap = {}) {
  * substitution values (also from the template literal) to reconstruct either a
  * complete DOM or string representation.
  * 
- * The array returned for something like `<div class="foo">Hello</div>`
- * looks like:
+ * Example: `<div class="foo">Hello</div>` ->
  * 
  *     [
  *       'div',
@@ -240,9 +244,9 @@ function renderComponent(component, attributes, children) {
 
 function renderElementToDOM(tag, attributes, children) {
   const element = document.createElement(tag);
-  Object.keys(attributes).forEach(name => {
-    element.setAttribute(name, attributes[name]);
-  });
+  for (const [name, value] of Object.entries(attributes)) {
+    element.setAttribute(name, value);
+  }
   element.appendChild(children);
   return element;
 }
@@ -289,9 +293,9 @@ function renderValueToDOM(value) {
 
 function resolveAttributes(attributesData, substitutions) {
   const resolved = {};
-  Object.keys(attributesData).forEach(name => {
-    resolved[name] = renderToText(attributesData[name], substitutions);
-  });
+  for (const [name, value] of Object.entries(attributesData)) {
+    resolved[name] = renderToText(value, substitutions);
+  }
   return resolved;
 }
 
