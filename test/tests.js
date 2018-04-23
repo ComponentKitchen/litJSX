@@ -1,19 +1,20 @@
-import {
-  jsxToDOM,
-  jsxToDOMWith,
+const assert = require("chai").assert;
+const {
+  // jsxToDOM,
+  // jsxToDOMWith,
   jsxToText,
   jsxToTextWith,
   parse,
   parseJSX,
-  renderToDOM,
+  // renderToDOM,
   renderToText
-} from '../src/litJSX.js';
+} = require('../src/litJSX.js');
 
 
 function BoldText(props) {
   return `<b>${props.children}</b>`;
 }
-window.BoldText = BoldText;
+global.BoldText = BoldText;
 
 
 function BoldDOM(props) {
@@ -21,7 +22,7 @@ function BoldDOM(props) {
   element.appendChild(props.children);
   return element;
 }
-window.BoldDOM = BoldDOM;
+global.BoldDOM = BoldDOM;
 
 
 describe("litJSX", () => {
@@ -98,27 +99,27 @@ describe("litJSX", () => {
     assert.equal(result, '<span>Hello, <b>world</b>.</span>');
   });
 
-  it("can render data + values as DOM", () => {
-    const data = parse([
-      `<span>Hello, <BoldDOM>`,
-      `</BoldDOM>.</span>`
-    ]);
-    const dom = renderToDOM(data, ['world']);
-    assert.equal(dom.outerHTML, '<span>Hello, <b>world</b>.</span>');
-  });
+  // it("can render data + values as DOM", () => {
+  //   const data = parse([
+  //     `<span>Hello, <BoldDOM>`,
+  //     `</BoldDOM>.</span>`
+  //   ]);
+  //   const dom = renderToDOM(data, ['world']);
+  //   assert.equal(dom.outerHTML, '<span>Hello, <b>world</b>.</span>');
+  // });
 
-  it("can render a component with a substitued property as DOM", () => {
-    const Name = (props) => new Text(props.name);
-    const data = [
-      Name,
-      {
-        name: 0
-      },
-      []
-    ];
-    const dom = renderToDOM(data, ['Jane']);
-    assert.equal(dom.textContent, 'Jane');
-  });
+  // it("can render a component with a substitued property as DOM", () => {
+  //   const Name = (props) => new Text(props.name);
+  //   const data = [
+  //     Name,
+  //     {
+  //       name: 0
+  //     },
+  //     []
+  //   ];
+  //   const dom = renderToDOM(data, ['Jane']);
+  //   assert.equal(dom.textContent, 'Jane');
+  // });
 
   it("provides tag template literal to render a string", () => {
     const name = 'world';
@@ -126,11 +127,11 @@ describe("litJSX", () => {
     assert.equal(text, '<span>Hello, <b>world</b>.</span>');
   });
 
-  it("provides tag template literal to render DOM", () => {
-    const name = 'world';
-    const dom = jsxToDOM`<span>Hello, <BoldDOM>${name}</BoldDOM>.</span>`;
-    assert.equal(dom.outerHTML, '<span>Hello, <b>world</b>.</span>');
-  });
+  // it("provides tag template literal to render DOM", () => {
+  //   const name = 'world';
+  //   const dom = jsxToDOM`<span>Hello, <BoldDOM>${name}</BoldDOM>.</span>`;
+  //   assert.equal(dom.outerHTML, '<span>Hello, <b>world</b>.</span>');
+  // });
 
   it("can construct a template literal for text that handles specific classes", () => {
     const Italic = (props) => `<i>${props.children}</i>`;
@@ -139,16 +140,16 @@ describe("litJSX", () => {
     assert.equal(text, `<i>foo</i>`);
   });
 
-  it("can construct a template literal for DOM that handles specific classes", () => {
-    const Italic = (props) => {
-      const element = document.createElement('i');
-      element.appendChild(props.children);
-      return element;
-    };
-    const html = jsxToDOMWith({ Italic });
-    const dom = html`<Italic>foo</Italic>`;
-    assert.equal(dom.outerHTML, `<i>foo</i>`);
-  });
+  // it("can construct a template literal for DOM that handles specific classes", () => {
+  //   const Italic = (props) => {
+  //     const element = document.createElement('i');
+  //     element.appendChild(props.children);
+  //     return element;
+  //   };
+  //   const html = jsxToDOMWith({ Italic });
+  //   const dom = html`<Italic>foo</Italic>`;
+  //   assert.equal(dom.outerHTML, `<i>foo</i>`);
+  // });
 
   it("can render attributes as text", () => {
     const html = jsxToText;
@@ -157,12 +158,12 @@ describe("litJSX", () => {
     assert.equal(text, `<div class="foo"></div>`);
   });
 
-  it("can render attributes as DOM", () => {
-    const html = jsxToDOM;
-    const value = 'foo';
-    const dom = html`<div class="${value}"></div>`;
-    assert.equal(dom.outerHTML, `<div class="foo"></div>`);
-  });
+  // it("can render attributes as DOM", () => {
+  //   const html = jsxToDOM;
+  //   const value = 'foo';
+  //   const dom = html`<div class="${value}"></div>`;
+  //   assert.equal(dom.outerHTML, `<div class="foo"></div>`);
+  // });
 
   it("can render async text compnents", async () => {
     const Async = props => Promise.resolve(`*${props.children}*`);
@@ -170,15 +171,15 @@ describe("litJSX", () => {
     assert.equal(text, `*test*`);
   });
 
-  it("can render async DOM compnents", async () => {
-    const Async = props => {
-      const span = document.createElement('span');
-      span.appendChild(props.children);
-      return Promise.resolve(span);
-    };
-    const dom = await jsxToDOMWith({ Async })`<Async>test</Async>`;
-    assert.equal(dom.outerHTML, `<span>test</span>`);
-  });
+  // it("can render async DOM compnents", async () => {
+  //   const Async = props => {
+  //     const span = document.createElement('span');
+  //     span.appendChild(props.children);
+  //     return Promise.resolve(span);
+  //   };
+  //   const dom = await jsxToDOMWith({ Async })`<Async>test</Async>`;
+  //   assert.equal(dom.outerHTML, `<span>test</span>`);
+  // });
 
   it("waits for async components in parallel", async () => {
     const Async = async (props) => {

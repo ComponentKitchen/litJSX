@@ -5,10 +5,11 @@
   "main": "src/litJSX.js",
   "devDependencies": {
     "chai": "4.1.2",
-    "mocha": "5.0.5",
+    "jsdom": "^11.9.0",
+    "mocha": "5.1.1",
     "xmldom": "0.1.27"
   },
   "scripts": {
-    "test": "node --experimental-modules test/tests.node.mjs"
+    "test": "./node_modules/.bin/mocha --reporter spec"
   }
 }
