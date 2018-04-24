@@ -5,9 +5,16 @@
  */
 
 
-// By default, load the xmldom DOMParser.
 const { DOMParser } = require('xmldom');
-let defaultDomParser = new DOMParser();
+let domParser = new DOMParser();
+
+
+const defaultClassMap = {
+  // Comment,
+  DocumentFragment,
+  DocumentType,
+  ProcessingInstruction
+};
 
 
 // Default cache for processed template strings.
@@ -32,6 +39,16 @@ function collapseWhitespace(string) {
 }
 
 
+function DocumentFragment(props) {
+  return props.children;
+}
+
+
+function DocumentType(props) {
+  return `<!doctype ${props.name}>`;
+}
+
+
 // Check a node returned from DOMParser to see if it contains an error (the
 // parser doesn't throw exceptions). If such a node is found, return the text of
 // the error, otherwise null.
@@ -47,30 +64,6 @@ function findDOMParserError(node) {
       null;
   return errorNode ? errorNode.textContent : null;
 }
-
-
-/*
- * Convert the JSX snippets and values into a DOM representation.
- * 
- * ["<div>","</div>"], ["Hello"]  ->  <div>Hello</div>
- */
-// function jsxToDOM(strings, ...values) {
-//   const data = parseAndCache(strings, {}, defaultCache);
-//   return renderToDOM(data, values);
-// }
-
-
-/*
- * Return a template literal capable of handling the indicated classes and
- * constructing a DOM representation.
- */
-// function jsxToDOMWith(classMap = {}) {
-//   const cache = new WeakMap();
-//   return (strings, ...values) => {
-//     const data = parseAndCache(strings, classMap, cache);
-//     return renderToDOM(data, values);
-//   };
-// }
 
 
 /*
@@ -147,24 +140,38 @@ function parseAndCache(strings, classMap, cache) {
  */
 function parseJSX(jsx, classMap = {}) {
 
-  // HACK(?): Extract DOMParser from class map.
-  const domParser = classMap.DOMParser ?
-    new classMap.DOMParser() :
-    defaultDomParser;
-
   // xmldom parser chokes unless leading/trailing whitespace is trimmed.
   const trimmed = jsx.trim();
-  const doc = domParser.parseFromString(trimmed, 'text/xml');
 
-  // Result of parsing should only have a single node.
-  const node = doc.firstChild;
+  // The parser expects only a single node, but we want to handle fragments
+  // with more than one node, so we wrap with a DocumentFragment node.
+  const wrapped = `<DocumentFragment>${trimmed}</DocumentFragment>`;
 
-  const error = findDOMParserError(node);
+  // Insert our default classes to create an extended class map.
+  const extendedClassMap = Object.assign({}, defaultClassMap, classMap);
+
+  const doc = domParser.parseFromString(wrapped, 'text/xml');
+
+  // Result of parsing should be a single node representing our wrapper.
+  const wrapperNode = doc.firstChild;
+
+  const error = findDOMParserError(wrapperNode);
   if (error) {
     throw error;
   }
 
-  return transformNode(node, classMap);
+  // If the wrapper contains a single child (i.e., JSX had a single top-level
+  // element), unwrap and process that child. Otherwise process the wrapper.
+  const node = wrapperNode.childNodes && wrapperNode.childNodes.length === 1 ?
+    wrapperNode.childNodes[0] :
+    wrapperNode;
+
+  return transformNode(node, extendedClassMap);
+}
+
+
+function ProcessingInstruction(props) {
+  return `<!${props.target} ${props.data}>`;
 }
 
 
@@ -221,13 +228,6 @@ function renderChildren(childrenData, substitutions, renderers) {
 }
 
 
-// function renderChildrenToDOM(children, substitutions) {
-//   const fragment = document.createDocumentFragment();
-//   children.forEach(child => fragment.appendChild(child));
-//   return fragment;
-// }
-
-
 function renderChildrenToText(children) {
   return children.join('');
 }
@@ -243,34 +243,12 @@ function renderComponent(component, attributes, children) {
 }
 
 
-// function renderElementToDOM(tag, attributes, children) {
-//   const element = document.createElement(tag);
-//   for (const [name, value] of Object.entries(attributes)) {
-//     element.setAttribute(name, value);
-//   }
-//   element.appendChild(children);
-//   return element;
-// }
-
-
 function renderElementToText(tag, attributes, children) {
   const attributeText = Object.keys(attributes).map(name => {
     return ` ${name}="${attributes[name]}"`;
   }).join('');
   return `<${tag}${attributeText}>${children}</${tag}>`;  
 }
-
-
-/*
- * Invoke unified render function with renderers for DOM.
- */
-// function renderToDOM(data, substitutions) {
-//   return render(data, substitutions, {
-//     children: renderChildrenToDOM,
-//     element: renderElementToDOM,
-//     value: renderValueToDOM
-//   });
-// }
 
 
 /*
@@ -283,13 +261,6 @@ function renderToText(data, substitutions) {
     value: renderValueToText
   });
 }
-
-
-// function renderValueToDOM(value) {
-//   return value instanceof Node ?
-//     value :
-//     new Text(value);
-// }
 
 
 function renderValueToText(value) {
@@ -319,12 +290,28 @@ function transformAttributes(attributes) {
 }
 
 
+function transformDocumentType(node, classMap) {
+  const { name } = node;
+  return [
+    classMap.DocumentType,
+    {
+      name
+    },
+    []
+  ];
+}
+
+
 /*
  * Transform a Node returned by DOMParser into our array representation.
  */
 function transformNode(node, classMap = {}) {
   if (node.nodeType === 3 /* Text node */) {
     return transformText(node.textContent);
+  } else if (node.nodeType === 7 /* Processing Instruction */) {
+    return transformProcessingInstruction(node, classMap);
+  } else if (node.nodeType === 10 /* Document Type */) {
+    return transformDocumentType(node, classMap);
   }
   // TODO: Handle Comment nodes.
   const localName = node.localName;
@@ -360,6 +347,19 @@ function transformNodes(nodes, classMap) {
 }
 
 
+function transformProcessingInstruction(node, classMap) {
+  const { data, target } = node;
+  return [
+    classMap.ProcessingInstruction,
+    {
+      data,
+      target
+    },
+    []
+  ];
+}
+
+
 function transformText(text) {
   const markerRegex = /\[\[\[(\d+)\]\]\]/;
   const trimmed = collapseWhitespace(text);
@@ -386,12 +386,9 @@ function transformText(text) {
 
 
 module.exports = {
-  // jsxToDOM,
-  // jsxToDOMWith,
   jsxToText,
   jsxToTextWith,
   parse,
   parseJSX,
-  // renderToDOM,
   renderToText
 };
