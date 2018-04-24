@@ -280,7 +280,7 @@ function renderToText(data, substitutions) {
   return render(data, substitutions, {
     children: renderChildrenToText,
     element: renderElementToText,
-    value: String   // Render values (including strings) as strings
+    value: renderValueToText
   });
 }
 
@@ -292,10 +292,19 @@ function renderToText(data, substitutions) {
 // }
 
 
+function renderValueToText(value) {
+  return value;
+}
+
+
 function resolveAttributes(attributesData, substitutions) {
   const resolved = {};
   for (const [name, value] of Object.entries(attributesData)) {
-    resolved[name] = renderToText(value, substitutions);
+    resolved[name] = value instanceof Array ?
+      // Mulit-part attribute: resolve each part and concatenate results.
+      value.map(item => renderToText(item, substitutions)).join('') :
+      // Single-part attribute
+      renderToText(value, substitutions);
   }
   return resolved;
 }
@@ -369,9 +378,9 @@ function transformText(text) {
   );
   // Remove empty strings.
   const stripped = transformed.filter(item => typeof item !== 'string' || item.length > 0);
-  // If there's only a single item that's an index, return just the index;
-  return stripped.length === 1 && typeof stripped[0] === 'number' ?
-    stripped[0] :
+
+  return (stripped.length === 1 && typeof stripped[0] === 'number') ?
+    stripped[0] : // Only one item that's an index; return the index itself.
     stripped;
 }
 

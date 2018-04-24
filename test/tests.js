@@ -165,7 +165,25 @@ describe("litJSX", () => {
   //   assert.equal(dom.outerHTML, `<div class="foo"></div>`);
   // });
 
-  it("can render async text compnents", async () => {
+  it("can concatenate strings to construct an attribute value", () => {
+    const html = jsxToText;
+    const value = 'foo';
+    const text = html`<div class="${value} bar"></div>`;
+    assert.equal(text, `<div class="foo bar"></div>`);
+  });
+
+  it("can pass objects to parameters identified as if they were attributes", () => {
+    const LastFirst = props => jsxToText`<span>${props.name.last}, ${props.name.first}</span>`;
+    const name = {
+      first: 'Jane',
+      last: 'Doe'
+    };
+    const html = jsxToTextWith({ LastFirst });
+    const text = html`<LastFirst name="${name}"/>`;
+    assert.equal(text, `<span>Doe, Jane</span>`);
+  });
+
+  it("can render async text components", async () => {
     const Async = props => Promise.resolve(`*${props.children}*`);
     const text = await jsxToTextWith({ Async })`<Async>test</Async>`;
     assert.equal(text, `*test*`);
