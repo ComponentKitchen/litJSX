@@ -21,6 +21,27 @@ const defaultClassMap = {
 const defaultCache = new WeakMap();
 
 
+const selfClosingTags = {
+  area: true,
+  base: true,
+  br: true,
+  col: true,
+  command: true,
+  embed: true,
+  hr: true,
+  img: true,
+  input: true,
+  keygen: true,
+  link: true,
+  menuitem: true,
+  meta: true,
+  param: true,
+  source: true,
+  track: true,
+  wbr: true
+};
+
+
 // Return the given string with any leading or trailing whitespace condensed to
 // a single space. This generally ensures the same whitespace handling in HTML,
 // while avoiding long blocks of white space before or after strings.
@@ -247,7 +268,10 @@ function renderElementToText(tag, attributes, children) {
   const attributeText = Object.keys(attributes).map(name => {
     return ` ${name}="${attributes[name]}"`;
   }).join('');
-  return `<${tag}${attributeText}>${children}</${tag}>`;  
+  const noChildren = children.trim().length === 0;
+  return selfClosingTags[tag] && noChildren ?
+    `<${tag}${attributeText}>` :
+    `<${tag}${attributeText}>${children}</${tag}>`;  
 }
 
 

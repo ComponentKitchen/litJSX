@@ -153,7 +153,7 @@ describe("litJSX", () => {
     assert.equal(text, '<b>One</b><b>Two</b>');
   });
 
-  it.only("can handle document type nodes", () => {
+  it("can handle document type nodes", () => {
     const text = jsxToText`<!doctype html>`;
     assert.equal(text, `<!doctype html>`);
   });
