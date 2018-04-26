@@ -187,12 +187,39 @@ function parseJSX(jsx, classMap = {}) {
     wrapperNode.childNodes[0] :
     wrapperNode;
 
-  return transformNode(node, extendedClassMap);
+  const data = transformNode(node, extendedClassMap);
+  return reducible(data) ?
+    renderToText(data) :
+    data;
 }
 
 
 function ProcessingInstruction(props) {
   return `<!${props.target} ${props.data}>`;
+}
+
+
+function reducible(data) {
+  if (typeof data === 'string') {
+    return true;
+  } else if (typeof data === 'number') {
+    return false;
+  }
+  const [nameData, attributesData, childrenData] = data;
+  if (typeof nameData === 'function') {
+    return false; // Can't simplify a component call
+  }
+  const irreducibleAttributes = Object.entries(attributesData).some(([name, value]) =>
+    typeof value !== 'string'
+  );
+  if (irreducibleAttributes) {
+    return false;
+  }
+  const irreducibleChildren = childrenData.some(child => !reducible(child));
+  if (irreducibleChildren) {
+    return false;
+  }
+  return true;
 }
 
 
@@ -302,6 +329,37 @@ function resolveAttributes(attributesData, substitutions) {
       renderToText(value, substitutions);
   }
   return resolved;
+}
+
+
+// If the indicated data is for an element node that has no substitutions in
+// attributes or children, then return a pre-rendered representation of the
+// final element. Otherwise, return the data as is.
+function simplify(data) {
+  // if (typeof data === 'string') {
+  //   return data; // Already as simplified as possible
+  // } else if (typeof data === 'number') {
+  //   return null; // Data represents a substitution, which can't be simplified.
+  // }
+  // const [nameData, attributesData, childrenData] = data;
+  // if (typeof nameData === 'function') {
+  //   return data; // Can't simplify a component call
+  // }
+  // const anyAttributeSubstitutions = Object.entries(attributesData).some(([name, value]) =>
+  //   typeof value !== 'string'
+  // );
+  // if (anyAttributeSubstitutions) {
+  //   return data;
+  // }
+  // const anyChildSubstitutions = childrenData.some(child =>
+  //   child !== simplify(child)
+  // );
+  // if (anyChildSubstitutions) {
+  //   return data;
+  // }
+
+  // // Data represents an element with no substitutions.
+  // return renderToText(data, {});
 }
 
 

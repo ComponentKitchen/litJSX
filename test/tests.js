@@ -79,6 +79,11 @@ describe("litJSX", () => {
     ]);
   });
 
+  it("flattens nodes with no substitutions", () => {
+    const data = parseJSX(`<div>Hello</div>`);
+    assert.equal(data, '<div>Hello</div>');
+  });
+
   it("can render data + values", () => {
     const data = parse([
       `<span>Hello, <Bold>`,
