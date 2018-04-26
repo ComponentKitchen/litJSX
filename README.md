@@ -12,7 +12,7 @@ litJSX exports a function `jsxToText` that parses JSX and returns a string repre
 Example:
 
 ```js
-const jsxToText = require('litJSX.js');
+const jsxToText = require('litjsx');
 
 const name = 'world';
 jsxToText`<span>Hello, ${world}.</span>` // "<span>Hello, world.</span>"
@@ -26,7 +26,7 @@ The JSX can contain a single top-level item, or multiple top-level items.
 Components are stateless functional components that take a `props` object as their sole parameter and return either a DOM element or a string:
 
 ```js
-const jsxToText = require('litJSX.js');
+const jsxToText = require('litjsx');
 
 export default function Header(props) {
   return jsxToText`
@@ -44,7 +44,7 @@ Header({ children: title })      // <h1>Hello</h1>
 Various editor extensions exist to apply HTML syntax highlighting to tagged template literals. Some of these require that the name of the template literal be `html`. By importing the template literal function as `html`, you can convince your editor extension to apply syntax highlighting to these litJSX template strings.
 
 ```js
-const { jsxToText: html } = require('litJSX.js');
+const { jsxToText: html } = require('litjsx');
 
 export default function Header(props) {
   return html`
@@ -58,12 +58,12 @@ export default function Header(props) {
 
 Components often include subcomponents.
 
-By default, the litJSX template parser looks in the global (window) scope for functions with the indicated component names. E.g., `<Foo/>` will look for a global function called `Foo` and incorporate the result of calling that function into the DOM or string result.
+By default, the litJSX template parser looks in the `global` scope for functions with the indicated component names. E.g., `<Foo/>` will look for a global function called `Foo` and incorporate the result of calling that function into the DOM or string result.
 
 For control over which components are included in the parser's scope, you can use bindable litJSX parser `jsxToTextWith`. This accepts a map of function names to functions, and returns a parser that will use that map in resolving component names to functions.
 
 ```js
-const jsxToTextWith = require(rom 'litJSX.js');
+const jsxToTextWith = require(rom 'litjsx');
 const html = jsxToTextWith({ Bold, Greet });
 
 function Bold(props) {
