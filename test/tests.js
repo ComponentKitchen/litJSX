@@ -160,7 +160,12 @@ describe("litJSX", () => {
 
   it("can handle document type nodes", () => {
     const text = jsxToText`<!doctype html>`;
-    assert.equal(text, `<!doctype html>`);
+    assert.equal(text, `<!DOCTYPE html>`);
+  });
+
+  it("can handle comments", () => {
+    const text = jsxToText`<!-- Hello -->`;
+    assert.equal(text, `<!-- Hello -->`);
   });
 
 });

@@ -11,9 +11,7 @@ let domParser = new DOMParser();
 
 const defaultClassMap = {
   // Comment,
-  DocumentFragment,
-  DocumentType,
-  ProcessingInstruction
+  DocumentFragment
 };
 
 
@@ -62,11 +60,6 @@ function collapseWhitespace(string) {
 
 function DocumentFragment(props) {
   return props.children;
-}
-
-
-function DocumentType(props) {
-  return `<!doctype ${props.name}>`;
 }
 
 
@@ -188,17 +181,18 @@ function parseJSX(jsx, classMap = {}) {
     wrapperNode;
 
   const data = transformNode(node, extendedClassMap);
+
   return reducible(data) ?
     renderToText(data) :
     data;
 }
 
 
-function ProcessingInstruction(props) {
-  return `<!${props.target} ${props.data}>`;
-}
-
-
+/*
+ * Return true if the indicate data represents a plain string or a plain HTML
+ * element that has only reducible attributes or children. An attribute or
+ * child cannot be reduced if it references one or more substitutions.
+ */
 function reducible(data) {
   if (typeof data === 'string') {
     return true;
@@ -332,37 +326,6 @@ function resolveAttributes(attributesData, substitutions) {
 }
 
 
-// If the indicated data is for an element node that has no substitutions in
-// attributes or children, then return a pre-rendered representation of the
-// final element. Otherwise, return the data as is.
-function simplify(data) {
-  // if (typeof data === 'string') {
-  //   return data; // Already as simplified as possible
-  // } else if (typeof data === 'number') {
-  //   return null; // Data represents a substitution, which can't be simplified.
-  // }
-  // const [nameData, attributesData, childrenData] = data;
-  // if (typeof nameData === 'function') {
-  //   return data; // Can't simplify a component call
-  // }
-  // const anyAttributeSubstitutions = Object.entries(attributesData).some(([name, value]) =>
-  //   typeof value !== 'string'
-  // );
-  // if (anyAttributeSubstitutions) {
-  //   return data;
-  // }
-  // const anyChildSubstitutions = childrenData.some(child =>
-  //   child !== simplify(child)
-  // );
-  // if (anyChildSubstitutions) {
-  //   return data;
-  // }
-
-  // // Data represents an element with no substitutions.
-  // return renderToText(data, {});
-}
-
-
 function transformAttributes(attributes) {
   const attributeData = {};
   Array.from(attributes).forEach(attribute => {
@@ -372,28 +335,17 @@ function transformAttributes(attributes) {
 }
 
 
-function transformDocumentType(node, classMap) {
-  const { name } = node;
-  return [
-    classMap.DocumentType,
-    {
-      name
-    },
-    []
-  ];
-}
-
-
 /*
  * Transform a Node returned by DOMParser into our array representation.
  */
 function transformNode(node, classMap = {}) {
   if (node.nodeType === 3 /* Text node */) {
     return transformText(node.textContent);
-  } else if (node.nodeType === 7 /* Processing Instruction */) {
-    return transformProcessingInstruction(node, classMap);
-  } else if (node.nodeType === 10 /* Document Type */) {
-    return transformDocumentType(node, classMap);
+  } else if (node.nodeType !== 1 /* I.e., not an Element */) {
+    // The xmldom DOMParser provides a `toString` on all nodes
+    // that seems to return what we want. (The browser DOMParser
+    // doesn't.)
+    return node.toString();
   }
   // TODO: Handle Comment nodes.
   const localName = node.localName;
@@ -426,19 +378,6 @@ function transformNodes(nodes, classMap) {
     }
   });
   return result;
-}
-
-
-function transformProcessingInstruction(node, classMap) {
-  const { data, target } = node;
-  return [
-    classMap.ProcessingInstruction,
-    {
-      data,
-      target
-    },
-    []
-  ];
 }
 
 
