@@ -1,29 +1,24 @@
 # litJSX
 
-This considers the possibility of using HTML tagged template literals to process JSX at runtime, then render template values to generate either DOM or string result. This is suitable for server-side HTML rendering, allowing decomposition of pages into functional components.
+This library provides HTML tagged template literals to process JSX at runtime and then render a final string result. This is suitable for server-side HTML rendering, allowing decomposition of pages into functional components.
 
 This feels like using JSX in React/Preact, but without a compile step. Parsing of JSX is done at runtime, but is only performed once per tagged template literal, and parsing is quite efficient, so runtime performance should be acceptable.
 
-["Hello, world" demo](https://rawgit.com/ComponentKitchen/litJSX/master/index.html) (discussed below in "Binding to components")
 
-[Page template demo](https://rawgit.com/ComponentKitchen/litJSX/master/demo/index.html)
+## litJSX template literal
 
-
-## litJSX template literal flavors
-
-litJSX includes two template literals:
-
-* `jsxToDom` parses JSX and returns a DOM element.
-* `jsxToText` parses JSX and returns a string representation.
+litJSX exports a function `jsxToText` that parses JSX and returns a string representation.
 
 Example:
 
 ```js
-import { jsxToText } from 'litJSX.js';
+const jsxToText = require('litJSX.js');
 
 const name = 'world';
 jsxToText`<span>Hello, ${world}.</span>` // "<span>Hello, world.</span>"
 ```
+
+The JSX can contain a single top-level item, or multiple top-level items.
 
 
 ## Components
@@ -31,10 +26,10 @@ jsxToText`<span>Hello, ${world}.</span>` // "<span>Hello, world.</span>"
 Components are stateless functional components that take a `props` object as their sole parameter and return either a DOM element or a string:
 
 ```js
-import { jsxToDOM } from 'litJSX.js';
+const jsxToText = require('litJSX.js');
 
 export default function Header(props) {
-  return jsxToDOM`
+  return jsxToText`
     <h1>${props.children}</h1>
   `;
 }
@@ -46,10 +41,10 @@ Header({ children: title })      // <h1>Hello</h1>
 
 ## Design-time syntax highlighting
 
-Various editor extensions exist to apply HTML syntax highlighting to tagged template literals. Some of these require that the name of the template literal be `html`. By importing the desired flavor of litJSX (`jsxToDom` or `jsxToText`) as `html`, you can convince your editor extension to apply syntax highlighting to these litJSX template strings.
+Various editor extensions exist to apply HTML syntax highlighting to tagged template literals. Some of these require that the name of the template literal be `html`. By importing the template literal function as `html`, you can convince your editor extension to apply syntax highlighting to these litJSX template strings.
 
 ```js
-import { jsxToDOM as html } from 'litJSX.js';
+const { jsxToText: html } = require('litJSX.js');
 
 export default function Header(props) {
   return html`
@@ -65,11 +60,11 @@ Components often include subcomponents.
 
 By default, the litJSX template parser looks in the global (window) scope for functions with the indicated component names. E.g., `<Foo/>` will look for a global function called `Foo` and incorporate the result of calling that function into the DOM or string result.
 
-For control over which components are included in the parser's scope, you can use bindable litJSX parsers called `jsxToDOMWith` and `jsxToTextWith`. These both accept a map of function names to functions, and return a parser that will use that map in resolving component names to functions.
+For control over which components are included in the parser's scope, you can use bindable litJSX parser `jsxToTextWith`. This accepts a map of function names to functions, and returns a parser that will use that map in resolving component names to functions.
 
 ```js
-import { jsxToDOMWith } from 'litJSX.js';
-const html = jsxToDOMWith({ Bold, Greet });
+const jsxToTextWith = require(rom 'litJSX.js');
+const html = jsxToTextWith({ Bold, Greet });
 
 function Bold(props) {
   return html`<b>${props.children}</b>`;
