@@ -80,8 +80,24 @@ describe("litJSX", () => {
   });
 
   it("flattens nodes with no substitutions", () => {
-    const data = parseJSX(`<div>Hello</div>`);
-    assert.equal(data, '<div>Hello</div>');
+    const data = parse([
+      `<div><img src="foo.jpg"><i>Hello, </i><b>`,
+      `</b></div>`
+    ]);
+    assert.deepEqual(data, [
+      'div',
+      {},
+      [
+        '<img src="foo.jpg"><i>Hello, </i>',
+        [
+          'b',
+          {},
+          [
+            0
+          ]
+        ]
+      ]
+    ]);
   });
 
   it("can render data + values", () => {

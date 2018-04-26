@@ -182,38 +182,45 @@ function parseJSX(jsx, classMap = {}) {
 
   const data = transformNode(node, extendedClassMap);
 
-  return reducible(data) ?
-    renderToText(data) :
-    data;
+  return reduce(data);
 }
 
 
 /*
- * Return true if the indicate data represents a plain string or a plain HTML
- * element that has only reducible attributes or children. An attribute or
- * child cannot be reduced if it references one or more substitutions.
+
  */
-function reducible(data) {
-  if (typeof data === 'string') {
-    return true;
-  } else if (typeof data === 'number') {
-    return false;
+function reduce(data) {
+  if (typeof data === 'string' || typeof data === 'number') {
+    return data;
   }
   const [nameData, attributesData, childrenData] = data;
-  if (typeof nameData === 'function') {
-    return false; // Can't simplify a component call
-  }
+  const irreducibleComponent = typeof nameData === 'function';
+  const reducedChildren = childrenData.map(child => reduce(child));
+
+  // See if we can merge any consecutive strings.
+  const mergedChildren = reducedChildren.reduce((acc, current) => {
+    const previous = acc.length > 0 ? acc[acc.length - 1] : null;
+    if (typeof previous === 'string' && typeof current === 'string') {
+      acc[acc.length - 1] = previous + current;
+    } else {
+      acc.push(current);
+    }
+    return acc;
+  }, []);
+
   const irreducibleAttributes = Object.entries(attributesData).some(([name, value]) =>
     typeof value !== 'string'
   );
-  if (irreducibleAttributes) {
-    return false;
+  const irreducibleChildren = mergedChildren.length > 1 || 
+    mergedChildren.length === 1 && typeof mergedChildren[0] !== 'string';
+  if (irreducibleComponent || irreducibleAttributes || irreducibleChildren) {
+    // We may have been able to reduce some of the children,
+    // but we can't completely reduce this node.
+    return [nameData, attributesData, mergedChildren];
   }
-  const irreducibleChildren = childrenData.some(child => !reducible(child));
-  if (irreducibleChildren) {
-    return false;
-  }
-  return true;
+  // Data represents a plain element that can be completely rendered now.
+  const renderedChildren = renderChildrenToText(mergedChildren);
+  return renderElementToText(nameData, attributesData, renderedChildren);
 }
 
 
