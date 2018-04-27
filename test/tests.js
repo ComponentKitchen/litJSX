@@ -185,4 +185,9 @@ describe("litJSX", () => {
     assert.equal(text, `<!-- Hello -->`);
   });
 
+  it("leaves named HTML entities alone", () => {
+    const text = jsxToText`&lt;`;
+    assert.equal(text, `&lt;`);
+  });
+
 });

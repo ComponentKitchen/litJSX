@@ -157,9 +157,15 @@ function parseJSX(jsx, classMap = {}) {
   // xmldom parser chokes unless leading/trailing whitespace is trimmed.
   const trimmed = jsx.trim();
 
+  // xmldom will do some limited handling of named HTML entites --
+  // but we don't want that. We circumvent that by replacing ampersands
+  // with the corresponding &amp; entity. xmldom will see the latter
+  // and replace it with an ampersand, restoring the original text.
+  const escaped = trimmed.replace(/&/g, '&amp;');
+
   // The parser expects only a single node, but we want to handle fragments
   // with more than one node, so we wrap with a DocumentFragment node.
-  const wrapped = `<DocumentFragment>${trimmed}</DocumentFragment>`;
+  const wrapped = `<DocumentFragment>${escaped}</DocumentFragment>`;
 
   // Insert our default classes to create an extended class map.
   const extendedClassMap = Object.assign({}, defaultClassMap, classMap);
