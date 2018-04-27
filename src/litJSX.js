@@ -5,12 +5,12 @@
  */
 
 
+// @ts-ignore
 const { DOMParser } = require('xmldom');
 let domParser = new DOMParser();
 
 
 const defaultClassMap = {
-  // Comment,
   DocumentFragment
 };
 
@@ -86,7 +86,7 @@ function findDOMParserError(node) {
  */
 function jsxToText(strings, ...values) {
   const data = parseAndCache(strings, {}, defaultCache);
-  return renderToText(data, values);
+  return render(data, values);
 }
 
 
@@ -94,7 +94,7 @@ function jsxToTextWith(classMap = {}) {
   const cache = new WeakMap();
   return (strings, ...values) => {
     const data = parseAndCache(strings, classMap, cache);
-    return renderToText(data, values);
+    return render(data, values);
   };
 }
 
@@ -187,7 +187,13 @@ function parseJSX(jsx, classMap = {}) {
 
 
 /*
-
+ * Reduce the element/component represented by the data if possible.
+ * 
+ * We can reduce an element (not a component) if all its attributes and children
+ * are plain strings that don't reference substitutions. We also
+ * opportunistically concatenate adjacent strings.
+ * 
+ * Example: ['h1', {}, ['Hello, ', 'world']] => '<h1>Hello, world</h1>'
  */
 function reduce(data) {
   if (typeof data === 'string' || typeof data === 'number') {
@@ -219,66 +225,29 @@ function reduce(data) {
     return [nameData, attributesData, mergedChildren];
   }
   // Data represents a plain element that can be completely rendered now.
-  const renderedChildren = renderChildrenToText(mergedChildren);
-  return renderElementToText(nameData, attributesData, renderedChildren);
-}
-
-
-/*
- * Given an array representation returned by `parse`, apply the given
- * substitutions (values from the template literal). Render the result
- * using the specified set of DOM or text renderers.
- */
-function render(data, substitutions, renderers) {
-  if (typeof data === 'string') {
-    return renderers.value(data);
-  } else if (typeof data === 'number') {
-    return renderers.value(substitutions[data]);
-  }
-  
-  // A component or element.
-  const [nameData, attributesData, childrenData] = data;
-  const isComponent = typeof nameData === 'function';
-  const resolvedAttributes = resolveAttributes(attributesData, substitutions);
-  const topRenderer = isComponent ? renderComponent : renderers.element;
-  
-  // Children may a promise for children, or the actual children.
-  const awaitedChildren = renderChildren(childrenData, substitutions, renderers);
-  if (awaitedChildren instanceof Promise) {
-    // Wait for children before constructing result.
-    return awaitedChildren.then(children => 
-      topRenderer(nameData, resolvedAttributes, children)
-    );
-  } else {
-    // Children were synchronous, can construct result right away.
-    return topRenderer(nameData, resolvedAttributes, awaitedChildren);
-  }
+  const renderedChildren = renderChildren(mergedChildren);
+  return renderElement(nameData, attributesData, renderedChildren);
 }
 
 
 /*
  * Render an array of children, which may include async results.
  */
-function renderChildren(childrenData, substitutions, renderers) {
+function renderChildren(childrenData, substitutions) {
   const rendered = childrenData.map(child =>
-      render(child, substitutions, renderers));
+    render(child, substitutions, ));
   // See if any of the rendered results are promises.
   const anyPromises = rendered.find(result => result instanceof Promise);
   if (anyPromises) {
     // At least one of the rendered results was a promise; wait for them all to
     // complete before processing the final set.
     return Promise.all(rendered).then(children =>
-      renderers.children(children, substitutions)
+      children.join('')
     );
   } else {
     // All children were synchronous, so process final set right away.
-    return renderers.children(rendered);
+    return rendered.join('');
   }
-}
-
-
-function renderChildrenToText(children) {
-  return children.join('');
 }
 
 
@@ -292,7 +261,7 @@ function renderComponent(component, attributes, children) {
 }
 
 
-function renderElementToText(tag, attributes, children) {
+function renderElement(tag, attributes, children) {
   const attributeText = Object.keys(attributes).map(name => {
     return ` ${name}="${attributes[name]}"`;
   }).join('');
@@ -304,19 +273,34 @@ function renderElementToText(tag, attributes, children) {
 
 
 /*
- * Invoke unified render function with renderers for text.
+ * Given an array representation returned by `parse`, apply the given
+ * substitutions (values from the template literal) and return the resulting
+ * text.
  */
-function renderToText(data, substitutions) {
-  return render(data, substitutions, {
-    children: renderChildrenToText,
-    element: renderElementToText,
-    value: renderValueToText
-  });
-}
-
-
-function renderValueToText(value) {
-  return value;
+function render(data, substitutions) {
+  if (typeof data === 'string') {
+    return data;
+  } else if (typeof data === 'number') {
+    return substitutions[data];
+  }
+  
+  // A component or element.
+  const [nameData, attributesData, childrenData] = data;
+  const isComponent = typeof nameData === 'function';
+  const resolvedAttributes = resolveAttributes(attributesData, substitutions);
+  const topRenderer = isComponent ? renderComponent : renderElement;
+  
+  // Children may a promise for children, or the actual children.
+  const awaitedChildren = renderChildren(childrenData, substitutions);
+  if (awaitedChildren instanceof Promise) {
+    // Wait for children before constructing result.
+    return awaitedChildren.then(children => 
+      topRenderer(nameData, resolvedAttributes, children)
+    );
+  } else {
+    // Children were synchronous, can construct result right away.
+    return topRenderer(nameData, resolvedAttributes, awaitedChildren);
+  }
 }
 
 
@@ -325,9 +309,9 @@ function resolveAttributes(attributesData, substitutions) {
   for (const [name, value] of Object.entries(attributesData)) {
     resolved[name] = value instanceof Array ?
       // Mulit-part attribute: resolve each part and concatenate results.
-      value.map(item => renderToText(item, substitutions)).join('') :
+      value.map(item => render(item, substitutions)).join('') :
       // Single-part attribute
-      renderToText(value, substitutions);
+      render(value, substitutions);
   }
   return resolved;
 }
@@ -418,5 +402,5 @@ module.exports = {
   jsxToTextWith,
   parse,
   parseJSX,
-  renderToText
+  render
 };

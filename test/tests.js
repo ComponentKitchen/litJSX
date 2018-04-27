@@ -4,13 +4,14 @@ const {
   jsxToTextWith,
   parse,
   parseJSX,
-  renderToText
+  render
 } = require('../src/litJSX.js');
 
 
 function Bold(props) {
   return `<b>${props.children}</b>`;
 }
+// @ts-ignore
 global.Bold = Bold;
 
 
@@ -81,7 +82,7 @@ describe("litJSX", () => {
 
   it("flattens nodes with no substitutions", () => {
     const data = parse([
-      `<div><img src="foo.jpg"><i>Hello, </i><b>`,
+      `<div><img src="foo.jpg"/><i>Hello, </i><b>`,
       `</b></div>`
     ]);
     assert.deepEqual(data, [
@@ -105,7 +106,7 @@ describe("litJSX", () => {
       `<span>Hello, <Bold>`,
       `</Bold>.</span>`
     ]);
-    const result = renderToText(data, ['world']);
+    const result = render(data, ['world']);
     assert.equal(result, '<span>Hello, <b>world</b>.</span>');
   });
 

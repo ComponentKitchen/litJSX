@@ -6,9 +6,14 @@
     "noImplicitAny": false,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
+    "lib": [
+      "es2017"
+    ],
     "strict": true,
-    "target": "ES6",
+    "target": "es2017",
     "types": [
+      "chai",
+      "mocha",
       "node"
     ]
   },
