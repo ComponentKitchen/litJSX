@@ -85,6 +85,25 @@ html`<Greet name="world"/>`     // <span>Hello, <b>world</b>.</span>
 This allows each JavaScript module to work strictly with the functions it has imported, without fear of name collisions.
 
 
+## Quoting attributes
+
+Unlike standard JSX, litJSX requires you to quote all attributes. That said, you can pass an object via an attribute. Even thought it's quoted, it won't be coerced to a string.
+
+```js
+const html = jsxToTextWith({ GreetFirst });
+
+function GreetFirst(props) {
+  return html`Hello, ${props.name.first}.`;
+}
+
+const name = {
+  first: 'Jane',
+  last: 'Doe'
+};
+html`<Greet name="${name}"/>`     // Hello, Jane.
+```
+
+
 ## Asynchronous components
 
 The litJSX functions support both synchronous and asynchronous components. If any component in the JSX is asynchronous, the entire tagged template literal will return a `Promise` for the complete result. This lets you create `async` components and `await` the final template result.

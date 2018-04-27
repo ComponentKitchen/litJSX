@@ -1,5 +1,6 @@
 {
   "name": "litjsx",
+  "description": "Server-side HTML rendering via a JavaScript template literal for JSX",
   "version": "0.0.1",
   "license": "MIT",
   "main": "src/litJSX.js",
