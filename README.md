@@ -119,3 +119,34 @@ const html = jsxToTextWith({ Page });
 const text = await html`<Page url="..."/>`;
 // text contains contents of page at the indicated URL
 ```
+
+
+## Server-side rendering
+
+litJSX is designed for use in server-side rendering of HTML. You can create litJSX components that accept an HTTP request and return a suitable block of HTML that can be sent as a response. E.g., writing a web server in [Express](http://expressjs.com/):
+
+```js
+const html = jsxToTextWith({ Greet });
+
+function Greet(props) {
+  return html`<p>Hello, ${props.name}</p>`;
+}
+
+function GreetPage(request) {
+  return html`
+    <!DOCTYPE html>
+    <html>
+      <body>
+        <Greet name=${request.params.name}/>
+      </body>
+    </html>
+  `;
+}
+
+// The page at /greet/Jane returns HTML saying "Hello, Jane."
+app.get('/greet/:name', (request, response) => {
+  const content = GreetPage(request);
+  response.set('Content-Type', 'text/html');
+  response.send(content);
+});
+```
