@@ -190,4 +190,11 @@ describe("litJSX", () => {
     assert.equal(text, `&lt;`);
   });
 
+  it("handles JSX that is only substitutions", () => {
+    const a = 0;
+    const b = 1;
+    const text = jsxToText`${a}${b}`;
+    assert.equal(text, '01');
+  });
+
 });

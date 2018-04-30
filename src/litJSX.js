@@ -173,22 +173,23 @@ function parseJSX(jsx, classMap = {}) {
   const doc = domParser.parseFromString(wrapped, 'text/xml');
 
   // Result of parsing should be a single node representing our wrapper.
-  const wrapperNode = doc.firstChild;
+  const node = doc.firstChild;
 
-  const error = findDOMParserError(wrapperNode);
+  const error = findDOMParserError(node);
   if (error) {
     throw error;
   }
 
-  // If the wrapper contains a single child (i.e., JSX had a single top-level
-  // element), unwrap and process that child. Otherwise process the wrapper.
-  const node = wrapperNode.childNodes && wrapperNode.childNodes.length === 1 ?
-    wrapperNode.childNodes[0] :
-    wrapperNode;
-
+  // Transform the XML DOM node into our data format.
   const data = transformNode(node, extendedClassMap);
 
-  return reduce(data);
+  // Try to simplify the result.
+  const reduced = reduce(data);
+
+  // We should now have a DocumentFragment object with simplified children. If
+  // there is only a single child, unwrap and return that child.
+  const canUnwrap = data[0] === DocumentFragment && data[2].length === 1;
+  return canUnwrap ? reduced[2][0] : reduced;
 }
 
 
@@ -344,7 +345,7 @@ function transformNode(node, classMap = {}) {
     // doesn't.)
     return node.toString();
   }
-  // TODO: Handle Comment nodes.
+  // What's left is either an element or a capitalized function name.
   const localName = node.localName;
   const isClassName = localName[0] === localName[0].toUpperCase();
   const nameData = isClassName ?
