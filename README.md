@@ -136,7 +136,7 @@ function GreetPage(request) {
     <!DOCTYPE html>
     <html>
       <body>
-        <Greet name=${request.params.name}/>
+        <Greet name="${request.params.name}"/>
       </body>
     </html>
   `;
