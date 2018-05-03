@@ -116,7 +116,7 @@ async function GreetUser(props) {
 
 const html = jsxToTextWith({ GreetUser });
 const userId = 1001; // Jane's user id
-const text = await html`<GreetUser id=${userId}/>`; // Hello, Jane.
+const text = await html`<GreetUser id="${userId}"/>`; // Hello, Jane.
 ```
 
 
