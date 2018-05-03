@@ -60,11 +60,11 @@ Components often include subcomponents.
 
 By default, the litJSX template parser looks in the `global` scope for functions with the indicated component names. E.g., `<Foo/>` will look for a global function called `Foo` and incorporate the result of calling that function into the DOM or string result.
 
-For control over which components are included in the parser's scope, you can use bindable litJSX parser `jsxToTextWith`. This accepts a map of function names to functions, and returns a parser that will use that map in resolving component names to functions.
+For control over which components are included in the parser's scope, you can use bindable litJSX parser `jsxToTextWith`. This accepts a map of function names to functions, and returns a template literal that will use that map in resolving component names to functions.
 
 ```js
-const jsxToTextWith = require(rom 'litjsx');
-const html = jsxToTextWith({ Bold, Greet });
+const jsxToTextWith = require('litjsx');
+const html = jsxToTextWith({ Bold, Greet }); // Create custom template literal.
 
 function Bold(props) {
   return html`<b>${props.children}</b>`;
@@ -106,18 +106,17 @@ html`<Greet name="${name}"/>`     // Hello, Jane.
 
 ## Asynchronous components
 
-The litJSX functions support both synchronous and asynchronous components. If any component in the JSX is asynchronous, the entire tagged template literal will return a `Promise` for the complete result. This lets you create `async` components and `await` the final template result.
+The litJSX functions support both synchronous and asynchronous components. If any component in the JSX is asynchronous, the entire tagged template literal returns a `Promise` for the complete result. This lets you create `async` components and `await` the final template result.
 
 ```js
-const Page = async (props) => {
-  // Do any necessary async work, like network requests.
-  const contents = await fetch(props.url);
-  return contents;
-};
+async function GreetUser(props) {
+  const user = await getUser(props.id); // Some async function to get data
+  return html`<p>Hello, ${user.name}.</p>`;
+}
 
-const html = jsxToTextWith({ Page });
-const text = await html`<Page url="..."/>`;
-// text contains contents of page at the indicated URL
+const html = jsxToTextWith({ GreetUser });
+const userId = 1001; // Jane's user id
+const text = await html`<GreetUser id=${userId}/>`; // Hello, Jane.
 ```
 
 
@@ -150,3 +149,5 @@ app.get('/greet/:name', (request, response) => {
   response.send(content);
 });
 ```
+
+Components to render pages will often be asynchronous components (see above) so that they can incorporate the results of database queries and other async work.

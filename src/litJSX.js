@@ -10,11 +10,6 @@ const { DOMParser } = require('xmldom');
 let domParser = new DOMParser();
 
 
-const defaultClassMap = {
-  DocumentFragment
-};
-
-
 // Default cache for processed template strings.
 const defaultCache = new WeakMap();
 
@@ -40,10 +35,12 @@ const selfClosingTags = {
 };
 
 
-// Return the given string with any leading or trailing whitespace condensed to
-// a single space. This generally ensures the same whitespace handling in HTML,
-// while avoiding long blocks of white space before or after strings.
-// Example: '   Hello, world   ' => ' Hello, world '
+/*
+ * Return the given string with any leading or trailing whitespace condensed to
+ * a single space. This generally ensures the same whitespace handling in HTML,
+ * while avoiding long blocks of white space before or after strings.
+ * Example: '   Hello, world   ' => ' Hello, world '
+ */
 function collapseWhitespace(string) {
   const hasLeadingSpace = /^\s/.test(string);
   const hasTrailingSpace = /\s$/.test(string);
@@ -58,14 +55,21 @@ function collapseWhitespace(string) {
 }
 
 
+/*
+ * A component that render a fragment of a document.
+ * We use this as a way of representing the result of parsing JSX that contains
+ * multiple top-level nodes.
+ */
 function DocumentFragment(props) {
   return props.children;
 }
 
 
-// Check a node returned from DOMParser to see if it contains an error (the
-// parser doesn't throw exceptions). If such a node is found, return the text of
-// the error, otherwise null.
+/*
+ * Check a node returned from DOMParser to see if it contains an error (the
+ * parser doesn't throw exceptions). If such a node is found, return the text of
+ * the error, otherwise null.
+ */
 function findDOMParserError(node) {
   const isErrorNode = node => node && node.nodeName === 'parsererror';
   // Error node might be first child or first grandchild.
@@ -81,20 +85,23 @@ function findDOMParserError(node) {
 
 
 /*
- * Return a template literal capable of handling the indicated classes and
- * constructing a string representation.
+ * Template literal function for JSX.
  */
-function jsxToText(strings, ...values) {
+function jsxToText(strings, ...substitutions) {
   const data = parseAndCache(strings, {}, defaultCache);
-  return render(data, values);
+  return render(data, substitutions);
 }
 
 
+/*
+ * Return a template literal capable of handling the indicated classes and
+ * constructing a string representation.
+ */
 function jsxToTextWith(classMap = {}) {
   const cache = new WeakMap();
-  return (strings, ...values) => {
+  return (strings, ...substitutions) => {
     const data = parseAndCache(strings, classMap, cache);
-    return render(data, values);
+    return render(data, substitutions);
   };
 }
 
@@ -167,8 +174,8 @@ function parseJSX(jsx, classMap = {}) {
   // with more than one node, so we wrap with a DocumentFragment node.
   const wrapped = `<DocumentFragment>${escaped}</DocumentFragment>`;
 
-  // Insert our default classes to create an extended class map.
-  const extendedClassMap = Object.assign({}, defaultClassMap, classMap);
+  // Create an extended class map that supports DocumentFragment.
+  const extendedClassMap = Object.assign({ DocumentFragment }, classMap);
 
   const doc = domParser.parseFromString(wrapped, 'text/xml');
 
@@ -258,6 +265,9 @@ function renderChildren(childrenData, substitutions) {
 }
 
 
+/*
+ * Invoke the indicated component to render it.
+ */
 function renderComponent(component, attributes, children) {
   const props = Object.assign(
     {},
@@ -268,6 +278,9 @@ function renderComponent(component, attributes, children) {
 }
 
 
+/*
+ * Render the HTML element with the indicated tag.
+ */
 function renderElement(tag, attributes, children) {
   const attributeText = Object.keys(attributes).map(name => {
     return ` ${name}="${attributes[name]}"`;
@@ -294,7 +307,7 @@ function render(data, substitutions) {
   // A component or element.
   const [nameData, attributesData, childrenData] = data;
   const isComponent = typeof nameData === 'function';
-  const resolvedAttributes = resolveAttributes(attributesData, substitutions);
+  const renderedAttributes = renderAttributes(attributesData, substitutions);
   const topRenderer = isComponent ? renderComponent : renderElement;
   
   // Children may a promise for children, or the actual children.
@@ -302,28 +315,34 @@ function render(data, substitutions) {
   if (awaitedChildren instanceof Promise) {
     // Wait for children before constructing result.
     return awaitedChildren.then(children => 
-      topRenderer(nameData, resolvedAttributes, children)
+      topRenderer(nameData, renderedAttributes, children)
     );
   } else {
     // Children were synchronous, can construct result right away.
-    return topRenderer(nameData, resolvedAttributes, awaitedChildren);
+    return topRenderer(nameData, renderedAttributes, awaitedChildren);
   }
 }
 
 
-function resolveAttributes(attributesData, substitutions) {
-  const resolved = {};
+/*
+ * Render a set of attributes.
+ */
+function renderAttributes(attributesData, substitutions) {
+  const rendered = {};
   for (const [name, value] of Object.entries(attributesData)) {
-    resolved[name] = value instanceof Array ?
+    rendered[name] = value instanceof Array ?
       // Mulit-part attribute: resolve each part and concatenate results.
       value.map(item => render(item, substitutions)).join('') :
       // Single-part attribute
       render(value, substitutions);
   }
-  return resolved;
+  return rendered;
 }
 
 
+/*
+ * Transform the attributes on a node to our array representation.
+ */
 function transformAttributes(attributes) {
   const attributeData = {};
   Array.from(attributes).forEach(attribute => {
@@ -364,6 +383,9 @@ function transformNode(node, classMap = {}) {
 }
 
 
+/*
+ * Transform a list of Node objects to our array representation.
+ */
 function transformNodes(nodes, classMap) {
   let result = [];
   Array.from(nodes).forEach(node => {
@@ -379,6 +401,10 @@ function transformNodes(nodes, classMap) {
 }
 
 
+/*
+ * Transform a text string that may contain placeholders into our array
+ * representation.
+ */
 function transformText(text) {
   const markerRegex = /\[\[\[(\d+)\]\]\]/;
   const trimmed = collapseWhitespace(text);
