@@ -23,7 +23,7 @@ The JSX can contain a single top-level item, or multiple top-level items.
 
 ## Components
 
-Components are stateless functional components that take a `props` object as their sole parameter and return either a DOM element or a string:
+Components are stateless functional components that take a `props` object as their sole parameter and return a string:
 
 ```js
 const jsxToText = require('litjsx');
