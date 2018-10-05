@@ -197,4 +197,13 @@ describe("litJSX", () => {
     assert.equal(text, '01');
   });
 
+  it('renders an array', () => {
+    const a = [
+      'Hello',
+      'world'
+    ];
+    const text = jsxToText`${a}`;
+    assert.equal(text, 'Helloworld');
+  });
+
 });

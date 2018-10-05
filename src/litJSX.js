@@ -301,7 +301,7 @@ function render(data, substitutions) {
   if (typeof data === 'string') {
     return data;
   } else if (typeof data === 'number') {
-    return substitutions[data];
+    return renderSubstitution(substitutions[data]);
   }
   
   // A component or element.
@@ -337,6 +337,17 @@ function renderAttributes(attributesData, substitutions) {
       render(value, substitutions);
   }
   return rendered;
+}
+
+
+/*
+ * Render a substituted value.
+ * Arrays are concatenated, everything else returned as string.
+ */
+function renderSubstitution(substitution) {
+  return substitution instanceof Array ?
+    substitution.join('') :
+    substitution;
 }
 
 
