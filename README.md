@@ -100,7 +100,7 @@ const name = {
   first: 'Jane',
   last: 'Doe'
 };
-html`<Greet name="${name}"/>`     // Hello, Jane.
+html`<GreetFirst name="${name}"/>`     // Hello, Jane.
 ```
 
 
