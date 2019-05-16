@@ -15,7 +15,7 @@ Example:
 const jsxToText = require('litjsx');
 
 const name = 'world';
-jsxToText`<span>Hello, ${world}.</span>` // "<span>Hello, world.</span>"
+jsxToText`<span>Hello, ${name}.</span>` // "<span>Hello, world.</span>"
 ```
 
 The JSX can contain a single top-level item, or multiple top-level items.
